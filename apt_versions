@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+def main():
+    module = AnsibleModule(
+        argument_spec = dict()
+    )
+
+    changed = True
+    ansible_facts = {'apt_versions': get_facts()}
+    module.exit_json(changed=changed, ansible_facts=ansible_facts, msg='asdf')
+
+def get_facts():
+    c = apt.Cache()
+    apt_versions = {}
+
+    for p in c:
+        if not p.is_installed:
+            continue
+
+        version = p.installed.version
+        pieces = version.split('.')
+        # version = semantic_version.Version(p.installed.version)
+
+        if len(pieces) > 1:
+            print version
+            major = version.split('.')[0]
+            minor = version.split('.')[1]
+            simple = '%s.%s' % (major,minor)
+        else:
+            major = minor = simple = version
+
+        apt_versions[p.name] = {
+                'version': version,
+                'major': major,
+                'minor': minor,
+                'simple': simple
+                }
+
+    return apt_versions
+
+# import module snippets
+from ansible.module_utils.basic import *
+from ansible.module_utils.urls import *
+
+import apt
+
+main()
