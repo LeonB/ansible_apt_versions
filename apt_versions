@@ -1,22 +1,67 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+class NotInstalled(Exception):
+   def __init__(self, arg):
+      self.args = arg
+
 def main():
     module = AnsibleModule(
-        argument_spec = dict()
+        argument_spec = dict(
+            name = dict(default='__all__'),
+            verbose = dict(default=True, choices=BOOLEANS),
+        )
     )
 
     changed = True
-    ansible_facts = {'apt_versions': get_facts()}
-    module.exit_json(changed=changed, ansible_facts=ansible_facts, msg='asdf')
+    name = module.params['name']
+    try:
+        ansible_facts = {'apt_versions': get_facts(name)}
+    except KeyError:
+        module.fail_json(msg='Unknown package %s' % (name))
+    except NotInstalled:
+        module.fail_json(msg='Package %s is not installed' % (name))
+    except Exception, e:
+        module.fail_json(msg='Unknown error %s' % (e))
+    else:
+        module.exit_json(changed=changed, ansible_facts=ansible_facts, msg='Populated ansible_facts.apt_versions')
 
-def get_facts():
+def get_facts(name):
     c = apt.Cache()
     apt_versions = {}
 
-    for p in c:
+    if name == '__all__':
+
+        count = 0
+        for p in c:
+            if not p.is_installed:
+                continue
+
+            count += 1
+            version = p.installed.version
+            pieces = version.split('.')
+            # version = semantic_version.Version(p.installed.version)
+
+            if len(pieces) > 1:
+                print version
+                major = version.split('.')[0]
+                minor = version.split('.')[1]
+                simple = '%s.%s' % (major,minor)
+            else:
+                major = minor = simple = version
+
+            apt_versions[p.name] = {
+                    'version': version,
+                    'major': major,
+                    'minor': minor,
+                    'simple': simple
+                    }
+        # add general installed package count 
+        apt_versions['__meta__'] = { 'count': count }
+    else:
+        p = c[name]
         if not p.is_installed:
-            continue
+            raise NotInstalled(name);
 
         version = p.installed.version
         pieces = version.split('.')
