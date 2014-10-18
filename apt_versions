@@ -31,38 +31,19 @@ def get_facts(name):
     apt_versions = {}
 
     if name == '__all__':
-
-        count = 0
-        for p in c:
-            if not p.is_installed:
-                continue
-
-            count += 1
-            version = p.installed.version
-            pieces = version.split('.')
-            # version = semantic_version.Version(p.installed.version)
-
-            if len(pieces) > 1:
-                print version
-                major = version.split('.')[0]
-                minor = version.split('.')[1]
-                simple = '%s.%s' % (major,minor)
-            else:
-                major = minor = simple = version
-
-            apt_versions[p.name] = {
-                    'version': version,
-                    'major': major,
-                    'minor': minor,
-                    'simple': simple
-                    }
-        # add general installed package count 
-        apt_versions['__meta__'] = { 'count': count }
+        packages = c
     else:
-        p = c[name]
-        if not p.is_installed:
-            raise NotInstalled(name);
+        packages = [c[name]]
 
+    count = 0
+    for p in packages:
+        if not p.is_installed:
+            if name == '__all__':
+                continue
+            else:
+                raise NotInstalled(name);
+
+        count += 1
         version = p.installed.version
         pieces = version.split('.')
         # version = semantic_version.Version(p.installed.version)
@@ -81,6 +62,8 @@ def get_facts(name):
                 'minor': minor,
                 'simple': simple
                 }
+    # add general installed package count
+    apt_versions['__meta__'] = { 'count': count }
 
     return apt_versions
 
